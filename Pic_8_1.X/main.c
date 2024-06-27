@@ -91,76 +91,76 @@ void Sys_Init(void)
     TRISCbits.TRISC14 = 1;                                                      // Input for 5 MHz clock
 
     TRISD = 0xFF;                                                               // Port D default to all Inputs
-    TRISDbits.TRISD11 = 0;
-    TRISDbits.TRISD10 = 0;                                                      // Input for T6CK, Prior Output for LE of SY8929 fine adjust line delay
-    TRISDbits.TRISD9 = 0;                                                       // D9 of delay line parallel bus
-    TRISDbits.TRISD1 = 0;                                                       // Input for T4CK
+    TRISDbits.TRISD11 = 0;                                                      // Addressing Bit B2 set to output
+    TRISDbits.TRISD10 = 0;                                                      // Addressing Bit B1 set to output
+    TRISDbits.TRISD9 = 0;                                                       // Addressing Bit B0 set to output
+    TRISDbits.TRISD1 = 0;                                                       // Waveform termination bit set to output
     
     TRISE = 0xFF;                                                               // Port E default to all Inputs  
     
     TRISF = 0xFF;                                                               // Port F default to all Inputs
    
     TRISG = 0xFF;                                                               // Port G default to all Inputs
-    TRISGbits.TRISG6 = 1;                                                       // Output for delayed PPS out
+    TRISGbits.TRISG6 = 1;                                                       // Enable/Disable TX
     TRISGbits.TRISG7 = 0;                                                       // UART1 TX output
     TRISGbits.TRISG8 = 1;                                                       // UART1 RX input
-    TRISGbits.TRISG9 = 0;     
+    TRISGbits.TRISG9 = 0;                                                       // Enable/Disable RX
     
     /* ********************************************************************** */
     /* Analog settings
     /* ********************************************************************** */
-    ANSELGbits.ANSG6 = 0;                                                       // G6 digital for delayed 1PPS output
-    ANSELGbits.ANSG7 = 0; 
-    ANSELGbits.ANSG8 = 0;                                                       // G8 digital for UART1 RX
-    ANSELGbits.ANSG9 = 0; 
+    ANSELGbits.ANSG6 = 0;                                                       // Define G6 as a digital pin
+    ANSELGbits.ANSG7 = 0;                                                       // Define G7 as a digital pin
+    ANSELGbits.ANSG8 = 0;                                                       // Define G8 as a digital pin
+    ANSELGbits.ANSG9 = 0;                                                       // Define G9 as a digital pin
     
     /* ********************************************************************** */
     /* Peripheral Pin Select (PPS) settings
     /* ********************************************************************** */
     
-    CFGCONbits.IOLOCK = 0;
-    U1RXRbits.U1RXR = 0b0001;                                                   // set UART1 RX to Remappable Pin RPG8
-    RPG7Rbits.RPG7R = 0b0001;                                                   // set UART1 TX to function 1, RPG7
-    CFGCONbits.IOLOCK = 1;
+    CFGCONbits.IOLOCK = 0;                                                      // Unlock the Peripheral Pin Selection
+    U1RXRbits.U1RXR = 0b0001;                                                   // Set UART1 RX to Remappable Pin RPG8
+    RPG7Rbits.RPG7R = 0b0001;                                                   // Set UART1 TX to function 1, RPG7
+    CFGCONbits.IOLOCK = 1;                                                      // Lock the Peripheral Pin Selection
   
-    for(i = 0; i < 1000000; i++){}                                                 // pause on boot to allow UART to stabilize  
+    for(i = 0; i < 1000000; i++){}                                              // Pause on boot to allow UART to stabilize  
 
-    SYSKEY = 0xAA996655;                                                        // first unlock key
-    SYSKEY = 0x556699AA;                                                        // second unlock key
+    SYSKEY = 0xAA996655;                                                        // First unlock key
+    SYSKEY = 0x556699AA;                                                        // Second unlock key
     SPLLCON = 0x014F0101;                                                       // PLL set for 200MHz system clock with 10MHz clock input frequency at pin
-    OSCCONbits.NOSC = 1;                                                        // set new oscillator section to 1 = Internal Fast Internal RC Oscillator with PLL module via Postscaler (FRCPLL)
-    OSCCONbits.OSWEN = 1;                                                       // set oscillator switch enable to 1 = Initiate an oscillator switch to selection specified by NOSC<2:0> bits
-    PB2DIVbits.PBDIV = 3;                                                       // peripheral bus clock 3 set to div by 0 for no division = SYSCLK freq, ds 717
-    OSCCONCLR = 0x10;                                                           // set the power-saving mode to an idle mode
-    SYSKEY = 0x33333333;                                                        // lock key
+    OSCCONbits.NOSC = 1;                                                        // Set new oscillator section to 1 = Internal Fast Internal RC Oscillator with PLL module via Postscaler (FRCPLL)
+    OSCCONbits.OSWEN = 1;                                                       // Set oscillator switch enable to 1 = Initiate an oscillator switch to selection specified by NOSC<2:0> bits
+    PB2DIVbits.PBDIV = 3;                                                       // Peripheral bus clock 3 set to div by 0 for no division = SYSCLK freq, ds 717
+    OSCCONCLR = 0x10;                                                           // Set the power-saving mode to an idle mode
+    SYSKEY = 0x33333333;                                                        // Lock key
     
-    PRISS = 0x76543210;                                                         // assign shadow set #7-#1 to priority level #7-#1 ISRs
-    INTCONSET = _INTCON_MVEC_MASK;                                              // configure Interrupt Controller for multi-vector mode
-    __builtin_enable_interrupts();                                              // set the CP0 Status register IE bit high to globally enable interrupts
+    PRISS = 0x76543210;                                                         // Assign shadow set #7-#1 to priority level #7-#1 ISRs
+    INTCONSET = _INTCON_MVEC_MASK;                                              // Configure Interrupt Controller for multi-vector mode
+    __builtin_enable_interrupts();                                              // Set the CP0 Status register IE bit high to globally enable interrupts
 
-    init_uart(); 
+    init_uart();                                                                // Function to initialize UART
     
 }
 
 void init_uart(void)
 {
-    U1BRG = 53;                                                                 // set for 57600
-    U1STA = 0;                                                                  // clear status control register for UART 1
-    U1MODE = 0x0000;                                                            // clear UART 1 mode register
+    U1BRG = 53;                                                                 // Set for 57600
+    U1STA = 0;                                                                  // Clear status control register for UART 1
+    U1MODE = 0x0000;                                                            // Clear UART 1 mode register
  
-    U1STAbits.UTXEN = 1;                                                        // transmit is enabled
+    U1STAbits.UTXEN = 1;                                                        // Transmit is enabled
+    U1STAbits.URXEN = 1;                                                        // Receive is enabled                    
     
-    U1STAbits.URXEN = 1;                                                        // receive is enabled                    
-    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // set interrupt priority
-    IEC3bits.U1RXIE = 1;                                                        // enable RX interrupt
-    IFS3bits.U1RXIF = 0; 
+    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // Set interrupt priority
+    IEC3bits.U1RXIE = 1;                                                        // Enable RX interrupt
+    IFS3bits.U1RXIF = 0;                                                        // Interrupt flag is cleared
     
     while (U1STAbits.URXDA) 
     {
-        volatile char dummy = U1RXREG; 
+        volatile char dummy = U1RXREG;                                          // Clear the receive buffer
     }
     
-    while (!U1STAbits.TRMT);
+    while (!U1STAbits.TRMT);                                                    // Clear the transmit buffer
     
-    U1MODEbits.ON = 1;                                                          // turn on UART1
+    U1MODEbits.ON = 1;                                                          // Turn on UART1
 }
