@@ -68,13 +68,13 @@
 
 int main(void)
 {        
-    init_system();                                                              // initialize Pic
+    Sys_Init();                                                              // initialize Pic
    
     while(1){}
     return 0;
 }
 
-void init_system(void)
+void Sys_Init(void)
 {
     __builtin_disable_interrupts();
     

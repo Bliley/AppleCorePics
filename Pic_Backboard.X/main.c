@@ -68,24 +68,61 @@
 
 int main(void)
 {        
-    Sys_Init();
-   
+    init_system(); 
     while(1){}
     return 0;
 }
 
-void Sys_Init(void)
+void init_system(void)
 {
-    __builtin_disable_interrupts();
+    __builtin_disable_interrupts();                                             // set the CP0 Status register IE bit low to globally disable interrupts
     
-    unsigned int i = 0;
+    init_configuration();
     
-    for(i = 0; i < 1000000; i++){} 
+    init_uart();
     
+    init_adc();
+    
+    init_interrupt(); 
+    
+    __builtin_enable_interrupts();                                              // set the CP0 Status register IE bit high to globally enable interrupts
+
+}
+
+void init_uart(void)
+{
+    U1BRG = 53;                                                                 // set for 57600
+    U1STA = 0;                                                                  // clear status control register for UART 1
+    U1MODE = 0x0000;                                                            // clear UART 1 mode register
+ 
+    U1STAbits.UTXEN = 1;                                                        // transmit is enabled
+    
+    U1STAbits.URXEN = 1;                                                        // receive is enabled                    
+    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // set interrupt priority
+    IEC3bits.U1RXIE = 1;                                                        // enable RX interrupt
+    IFS3bits.U1RXIF = 0; 
+    
+    while (U1STAbits.URXDA) 
+    {
+        volatile char dummy = U1RXREG; 
+    }
+    
+    while (!U1STAbits.TRMT);
+    
+    U1MODEbits.ON = 1;                                                          // turn on UART1
+}
+
+void init_configuration(void)
+{
     /* ********************************************************************** */
     /* Tristate settings
     /* ********************************************************************** */
     TRISB = 0xFF;                                                               // Port B default to all Inputs
+    TRISBbits.TRISB2 = 1;
+    TRISBbits.TRISB3 = 1;                                                      
+    TRISBbits.TRISB4 = 1;
+    TRISBbits.TRISB5 = 1;
+    TRISBbits.TRISB6 = 1;                                                     
     TRISBbits.TRISB7 = 0;
     TRISBbits.TRISB8 = 0;                                                      // Input for T6CK, Prior Output for LE of SY8929 fine adjust line delay
     TRISBbits.TRISB9 = 0;
@@ -98,7 +135,6 @@ void Sys_Init(void)
     
     TRISC = 0xFF;                                                               // Port C default to all Inputs
     TRISCbits.TRISC14 = 1;                                                      // Input for 5 MHz clock
-    TRISCbits.TRISC14 = 0; 
     
     TRISD = 0xFF;                                                               // Port D default to all Inputs
     TRISDbits.TRISD5 = 0;                                                       // D9 of delay line parallel bus
@@ -157,8 +193,9 @@ void Sys_Init(void)
     U1RXRbits.U1RXR = 0b0001;                                                   // set UART1 RX to Remappable Pin RPG8
     RPG7Rbits.RPG7R = 0b0001;                                                   // set UART1 TX to function 1, RPG7
     CFGCONbits.IOLOCK = 1;
-  
-    for(i = 0; i < 1000000; i++){}                                                 // pause on boot to allow UART to stabilize  
+    
+    unsigned int i = 0;
+    for(i = 0; i < 1000000; i++){}                                              // pause on boot to allow UART to stabilize  
 
     SYSKEY = 0xAA996655;                                                        // first unlock key
     SYSKEY = 0x556699AA;                                                        // second unlock key
@@ -172,36 +209,35 @@ void Sys_Init(void)
     
     PRISS = 0x76543210;                                                         // assign shadow set #7-#1 to priority level #7-#1 ISRs
     INTCONSET = _INTCON_MVEC_MASK;                                              // configure Interrupt Controller for multi-vector mode
-    __builtin_enable_interrupts();                                              // set the CP0 Status register IE bit high to globally enable interrupts
 
-    init_uart();
+    LATBbits.LATB7 = 0;
+    LATBbits.LATB8 = 0;
+    LATBbits.LATB9 = 0;
+    LATBbits.LATB10 = 0;
+    LATBbits.LATB11 = 0;
+    LATBbits.LATB12 = 0;
+    LATBbits.LATB13 = 1;
+    LATBbits.LATB14 = 1;
+    LATBbits.LATB15 = 1;
     
-    init_adc();
+    LATCbits.LATC15 = 1;
     
-    init_interrupt(); 
-}
-
-void init_uart(void)
-{
-    U1BRG = 53;                                                                 // set for 57600
-    U1STA = 0;                                                                  // clear status control register for UART 1
-    U1MODE = 0x0000;                                                            // clear UART 1 mode register
- 
-    U1STAbits.UTXEN = 1;                                                        // transmit is enabled
+    LATDbits.LATD2 = 0;
+    LATDbits.LATD3 = 0;
+    LATDbits.LATD4 = 0;
+    LATDbits.LATD5 = 0;
     
-    U1STAbits.URXEN = 1;                                                        // receive is enabled                    
-    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // set interrupt priority
-    IEC3bits.U1RXIE = 1;                                                        // enable RX interrupt
-    IFS3bits.U1RXIF = 0; 
+    LATEbits.LATE0 = 0;
+    LATEbits.LATE1 = 0;
+    LATEbits.LATE2 = 0;
+    LATEbits.LATE3 = 0;
+    LATEbits.LATE4 = 0;
     
-    while (U1STAbits.URXDA) 
-    {
-        volatile char dummy = U1RXREG; 
-    }
-    
-    while (!U1STAbits.TRMT);
-    
-    U1MODEbits.ON = 1;                                                          // turn on UART1
+    LATFbits.LATF0 = 0;
+    LATFbits.LATF1 = 0;
+    LATFbits.LATF3 = 0;
+    LATFbits.LATF4 = 0;
+    LATFbits.LATF5 = 0;
 }
 
 void init_adc(void)
@@ -218,11 +254,6 @@ void init_adc(void)
     /* ********************************************************************** */
 
     ADCCON1 = 0;                                                                // No ADCCON1 features are enabled including: Stop-in-Idle, turbo, CVD mode, Fractional mode and scan trigger source.
-    ADCCON1bits.AICPMPEN = 0;                                                   // 0 for VDD > 2.5V
-    SYSKEY = 0xAA996655;                                                        // first unlock key
-    SYSKEY = 0x556699AA;                                                        // second unlock key
-    CFGCONbits.IOANCPEN = 0;                                                    // power up default = 0, 1 for VDD < 2.5v
-    SYSKEY = 0x33333333;                                                        // lock key
 
     /* ********************************************************************** */
     /* Configure ADCCON2
@@ -244,10 +275,7 @@ void init_adc(void)
     ADCCON3 = 0;
     ADCCON3bits.ADCSEL = 1;                                                     // Select input clock source
     ADCCON3bits.CONCLKDIV = 0;                                                  // Control clock frequency is half of input clock PR031122
-    ADCCON3bits.VREFSEL = 0;                                                    // Select AVDD and AVSS as reference source    
-    ADCFSTAT = 0;
-    ADCFSTATbits.FEN = 1;                                                       // FIFO enable/disable
-    ADCFSTATbits.ADC1EN = 1;                                                    // FIFO enable/disable
+    ADCCON3bits.VREFSEL = 0;                                                    // Select AVDD and AVSS as reference source   
     
     /* ********************************************************************** */
     /* Select ADC sample time and conversion clock 
@@ -277,11 +305,11 @@ void init_adc(void)
     /* Select analog input for ADC modules, no pre-sync trigger, not sync sampling 
     /* ********************************************************************** */
 
-    ADCTRGMODEbits.SH0ALT = 1;
+    ADCTRGMODEbits.SH0ALT = 1;                                                  // ADC0 = AN45
     ADCTRGMODEbits.SH1ALT = 1;                                                  // ADC1 = AN46
-    ADCTRGMODEbits.SH2ALT = 0;
-    ADCTRGMODEbits.SH3ALT = 0;
-    ADCTRGMODEbits.SH4ALT = 0;
+    ADCTRGMODEbits.SH2ALT = 0;                                                  // ADC2 = AN2
+    ADCTRGMODEbits.SH3ALT = 0;                                                  // ADC3 = AN3
+    ADCTRGMODEbits.SH4ALT = 0;                                                  // ADC4 = AN4
     
     /* ********************************************************************** */
     /* Select ADC input mode 
@@ -338,43 +366,53 @@ void init_adc(void)
     /* Set up the trigger sources 
     /* ********************************************************************** */
 
-    ADCEIEN1 = 0;                                                               // No early interrupt
-    ADCEIEN2 = 0;
-    
-    ADCCON1bits.ON = 1;                                                         // Turn the ADC on
+    ADCTRGSNSbits.LVL0 = 0;                                                     // Edge trigger
     ADCTRGSNSbits.LVL1 = 0;                                                     // Edge trigger
+    ADCTRGSNSbits.LVL2 = 0;                                                     // Edge trigger
+    ADCTRGSNSbits.LVL3 = 0;                                                     // Edge trigger
+    ADCTRGSNSbits.LVL4 = 0;                                                     // Edge trigger
     
-    // Configuration for ADC0
-    ADCTRG1bits.TRGSRC0 = 1;                                                    // Set another channel to trigger from software
-    while(!ADCCON2bits.BGVRRDY);                                                // Wait until the reference voltage is ready
-    while(ADCCON2bits.REFFLT);  
-    ADCANCONbits.ANEN0 = 1;                                                     // Enable the clock to analog bias for ADC0
-    while (!ADCANCONbits.WKRDY0);                                               // Wait until ADC2 is ready
-    ADCCON3bits.DIGEN0 = 1;                                                     // Enable ADC0 module
+    ADCTRG1bits.TRGSRC0 = 1;                                                    // Set AN0 to trigger from software.
+    ADCTRG1bits.TRGSRC1 = 1;                                                    // Set AN1 to trigger from software.
+    ADCTRG1bits.TRGSRC2 = 1;                                                    // Set AN2 to trigger from software.
+    ADCTRG1bits.TRGSRC3 = 1;                                                    // Set AN3 to trigger from software.
+    ADCTRG2bits.TRGSRC4 = 1;                                                    // Set AN4 to trigger from software.
     
-    // Configuration for ADC1
-    ADCTRG1bits.TRGSRC1 = 1;                                                    // Set AN46 to trigger from software.   
-    ADCANCONbits.ANEN1 = 1;                                                     // Enable the clock to analog bias for ADC1
-    while(!ADCANCONbits.WKRDY1);                                                // Wait until ADC1 is ready
-    ADCCON3bits.DIGEN1 = 1;                                                     // Enable ADC1 module
-
-    // Configuration for ADC2
-    ADCTRG1bits.TRGSRC2 = 1;                                                    // Set another channel to trigger from software
-    ADCANCONbits.ANEN2 = 1;                                                     // Enable the clock to analog bias for ADC2
-    while (!ADCANCONbits.WKRDY2);                                               // Wait until ADC2 is ready
-    ADCCON3bits.DIGEN2 = 1;                                                     // Enable ADC2 module
+    ADCEIEN1 = 0;                                                               // No early interrupt
+    ADCEIEN2 = 0;                                                   
     
-    // Configuration for ADC3
-    ADCTRG1bits.TRGSRC3 = 1;                                                    // Set another channel to trigger from software
-    ADCANCONbits.ANEN3 = 1;                                                     // Enable the clock to analog bias for ADC3
-    while (!ADCANCONbits.WKRDY3);                                               // Wait until ADC3 is ready
-    ADCCON3bits.DIGEN3 = 1;                                                     // Enable ADC3 module
+    /* Turn the ADC on */
+    ADCCON1bits.ON = 1;
+    /* Wait for voltage reference to be stable */
+    while(!ADCCON2bits.BGVRRDY); // Wait until the reference voltage is ready
+    while(ADCCON2bits.REFFLT); // Wait if there is a fault with the reference voltage
     
-    // Configuration for ADC4
-    ADCTRG2bits.TRGSRC4 = 1;                                                    // Set another channel to trigger from software
-    ADCANCONbits.ANEN4 = 1;                                                     // Enable the clock to analog bias for ADC4
-    while (!ADCANCONbits.WKRDY4);                                               // Wait until ADC4 is ready
-    ADCCON3bits.DIGEN4 = 1;                                                     // Enable ADC4 module
+    /* Enable clock to analog circuit */
+    ADCANCONbits.ANEN0 = 1; // Enable the clock to analog bias
+    ADCANCONbits.ANEN1 = 1; // Enable the clock to analog bias
+    ADCANCONbits.ANEN2 = 1; // Enable the clock to analog bias
+    ADCANCONbits.ANEN3 = 1; // Enable the clock to analog bias
+    ADCANCONbits.ANEN4 = 1; // Enable the clock to analog bias
+    
+    /* Wait for ADC to be ready */
+    while(!ADCANCONbits.WKRDY0); // Wait until ADC0 is ready
+    while(!ADCANCONbits.WKRDY1); // Wait until ADC1 is ready
+    while(!ADCANCONbits.WKRDY2); // Wait until ADC2 is ready
+    while(!ADCANCONbits.WKRDY3); // Wait until ADC3 is ready
+    while(!ADCANCONbits.WKRDY4); // Wait until ADC4 is ready
+    
+    /* Enable the ADC module */
+    ADCCON3bits.DIGEN0 = 1; // Enable ADC0
+    ADCCON3bits.DIGEN1 = 1; // Enable ADC1
+    ADCCON3bits.DIGEN2 = 1; // Enable ADC2
+    ADCCON3bits.DIGEN3 = 1; // Enable ADC3
+    ADCCON3bits.DIGEN4 = 1; // Enable ADC4
+    
+    ADCDATA0 = 0;
+    ADCDATA1 = 0;
+    ADCDATA2 = 0;
+    ADCDATA3 = 0;
+    ADCDATA4 = 0;
 }
 
 void init_interrupt(void)

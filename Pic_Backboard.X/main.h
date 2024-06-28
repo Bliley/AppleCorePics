@@ -1,7 +1,8 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-void Sys_Init(void);
+void init_system(void);
+void init_configuration(void);
 void init_uart(void);
 void init_adc(void);
 void init_interrupt(void);

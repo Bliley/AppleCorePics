@@ -7,8 +7,8 @@
 
 double powerVariable = 0.0;
 double powerCheck = 0.0;
-double adc = 0.0;
-char adcStr[5];
+uint16_t adc = 0;
+char adcStr[20];
 bool bottomInsert = false;
 bool topInsert = false;
 
@@ -135,7 +135,6 @@ void process_message(uint8_t* message, uint8_t length)
             }
             if (message[2] == 'T')
             {
-                LATFbits.LATF3 = 0;
                 if (message[3] == '1') 
                 {
                     LATFbits.LATF0 = 1;
@@ -235,51 +234,7 @@ void process_message(uint8_t* message, uint8_t length)
                 {
                     LATDbits.LATD3 = 0;
                 }
-            }
-            
-            //Enable/Disable Addressing on top/bottom rack 
-            if(message[2] == 'A') 
-            {
-                if(message[3] == 'T') 
-                {
-                    LATDbits.LATD2 = 1;
-                }
-                
-                {
-                    LATDbits.LATD2 = 0;
-                }
-            }
-            break;    
-            
-        //Enable/Disable the RX
-        case 'R':
-            if(message[2] == 'X')
-            {
-                if(message[3] == '1') 
-                {
-                    LATGbits.LATG9 = 1;
-                }
-                else
-                {
-                    LATGbits.LATG9 = 0;
-                }  
-                break; 
-            }
-            
-        //Enable/Disable the TX
-        case 'T':
-            if(message[2] == 'X') 
-            {
-                if(message[3] == '1')
-                {
-                    LATGbits.LATG6 = 1;
-                }
-                else
-                {
-                    LATGbits.LATG6 = 0;
-                }  
-                break; 
-            }
+            }   
             
         //Get a reading on one of the ADC channels
         case 'A':
@@ -413,12 +368,12 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
 {
     //Clear the interrupt flag
     IFS0bits.INT0IF = 0;
-
-    //Toggle the state of bottomInsert
-    bottomInsert = !bottomInsert;
     
     //Toggle the edge detection mode
     INTCONbits.INT0EP = !INTCONbits.INT0EP;
+    
+    //Toggle the state of bottomInsert
+    bottomInsert = !bottomInsert;
     
     //If the interrupt is the rack being inserted
     if (bottomInsert)
@@ -426,6 +381,9 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
         //Set the DISABLE and RESET buttons to 0
         LATCbits.LATC15 = 0;
         LATBbits.LATB15 = 0;
+        
+        //Reset_BR to 0
+        LATBbits.LATB13 = 0;
 
         //Enable the EN_SET1 and EN_SET2
         LATBbits.LATB9 = 1;
@@ -454,13 +412,10 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
             LATBbits.LATB7 = 0;
             LATBbits.LATB8 = 0;
         }
-        double checkVolt = ADC_Read(4);
+         double checkVolt = ADC_Read(4);
         
         if ((powerCheck - 0.1 <= checkVolt) && (checkVolt <= powerCheck + 0.1))
         {
-            //Reset_BR to 0
-            LATBbits.LATB13 = 0;
-
             //EN_VOSC BR to 1
             LATBbits.LATB12 = 1;
 
@@ -489,7 +444,10 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
         }
     }
     else
-    {       
+    {      
+        //Set the internal variable back to 0
+        powerVariable = 0.0;
+        
         //Set the DISABLE and RESET buttons to 0
         LATCbits.LATC15 = 0;
         LATBbits.LATB15 = 0;
@@ -520,46 +478,32 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
 
 double ADC_Read(uint8_t channel)
 {
-    if (channel >= 5) // Validate the channel number, change 4 to 5 to include channel 4
+    if (channel >= 0 && channel <= 4)
     {
-        return 0; // Invalid channel, return 0 or handle the error as appropriate
-    }
-    
-    // Manually select the ADC channel
-    ADCCON3bits.ADINSEL = channel; // Select the ADC input channel
-
-    // Start sampling and conversion
-    ADCCON3bits.GSWTRG = 1; // Trigger the conversion
-
-    // Wait for the specific channel's conversion to complete
-    switch (channel) {
-        case 0: while (!ADCDSTAT1bits.ARDY0); break;
-        case 1: while (!ADCDSTAT1bits.ARDY1); break;
-        case 2: while (!ADCDSTAT1bits.ARDY2); break;
-        case 3: while (!ADCDSTAT1bits.ARDY3); break;
-        case 4: while (!ADCDSTAT1bits.ARDY4); break;
-        default: return 0; // Should never reach here due to initial check
-    }
-    
-    double adcVal = 0;
-    // Read the conversion result from the appropriate ADCDATA register
-    switch (channel) {
-        case 0:
-            adcVal = ((double)ADCDATA0 / (4096 - 1)) * 3.3;
-            return adcVal;
-        case 1: 
-            adcVal = ((double)ADCDATA1 / (4096 - 1)) * 3.3;
-            return adcVal;
-        case 2: 
-            adcVal = ((double)ADCDATA2 / (4096 - 1)) * 3.3;
-            return adcVal;
-        case 3: 
-            adcVal = ((double)ADCDATA3 / (4096 - 1)) * 3.3;
-            return adcVal;
-        case 4: 
-            adcVal = ((double)ADCDATA4 / (4096 - 1)) * 3.3;
-            return adcVal;
-        default: return adcVal; // Should never reach here due to initial check
+        uint16_t result[5]; 
+        
+        ADCCON3bits.ADINSEL = channel;  // Select the channel
+        ADCCON3bits.SAMP = 1;           // Start sampling
+        
+        unsigned int i;
+        for (i = 0; i < 20; i++) {}
+        
+        ADCCON3bits.RQCNVRT = 1;        // Start conversion
+        ADCCON3bits.SAMP = 0;           // Release Sample
+        while (ADCCON3bits.RQCNVRT);    // Wait for conversion to finish
+        
+        switch (channel) {
+        case 0: return (ADCDATA0 * 3.3) / 4095.0; ;
+        case 1: return (ADCDATA1 * 3.3) / 4095.0; ;
+        case 2: return (ADCDATA2 * 3.3) / 4095.0; ;
+        case 3: return (ADCDATA3 * 3.3) / 4095.0; ;
+        case 4: return (ADCDATA4 * 3.3) / 4095.0; ;
+        default: return 0;
+        }
+    }    
+    else
+    {
+        return 0;     
     }
 }
 
