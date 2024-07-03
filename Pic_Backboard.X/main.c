@@ -68,8 +68,17 @@
 
 int main(void)
 {        
-    init_system(); 
+    init_system();
+    
+    int i; 
+    for(i=0; i<20000000; i++){}
+    
+    LATBbits.LATB13 = 0;
+    LATBbits.LATB14 = 0;
+    LATBbits.LATB15 = 0;
+    
     while(1){}
+    
     return 0;
 }
 
@@ -135,6 +144,7 @@ void init_configuration(void)
     
     TRISC = 0xFF;                                                               // Port C default to all Inputs
     TRISCbits.TRISC14 = 1;                                                      // Input for 5 MHz clock
+    TRISCbits.TRISC15 = 0;
     
     TRISD = 0xFF;                                                               // Port D default to all Inputs
     TRISDbits.TRISD5 = 0;                                                       // D9 of delay line parallel bus
@@ -209,7 +219,8 @@ void init_configuration(void)
     
     PRISS = 0x76543210;                                                         // assign shadow set #7-#1 to priority level #7-#1 ISRs
     INTCONSET = _INTCON_MVEC_MASK;                                              // configure Interrupt Controller for multi-vector mode
-
+    
+    LATB = 0x00; 
     LATBbits.LATB7 = 0;
     LATBbits.LATB8 = 0;
     LATBbits.LATB9 = 0;
@@ -220,19 +231,23 @@ void init_configuration(void)
     LATBbits.LATB14 = 1;
     LATBbits.LATB15 = 1;
     
-    LATCbits.LATC15 = 1;
+    LATC = 0x00; 
+    LATCbits.LATC15 = 0;
     
+    LATD = 0x00; 
     LATDbits.LATD2 = 0;
     LATDbits.LATD3 = 0;
     LATDbits.LATD4 = 0;
     LATDbits.LATD5 = 0;
     
+    LATE = 0x00; 
     LATEbits.LATE0 = 0;
     LATEbits.LATE1 = 0;
     LATEbits.LATE2 = 0;
     LATEbits.LATE3 = 0;
     LATEbits.LATE4 = 0;
     
+    LATF = 0x00; 
     LATFbits.LATF0 = 0;
     LATFbits.LATF1 = 0;
     LATFbits.LATF3 = 0;
@@ -381,32 +396,28 @@ void init_adc(void)
     ADCEIEN1 = 0;                                                               // No early interrupt
     ADCEIEN2 = 0;                                                   
     
-    /* Turn the ADC on */
-    ADCCON1bits.ON = 1;
-    /* Wait for voltage reference to be stable */
-    while(!ADCCON2bits.BGVRRDY); // Wait until the reference voltage is ready
-    while(ADCCON2bits.REFFLT); // Wait if there is a fault with the reference voltage
+    ADCCON1bits.ON = 1;                                                         // Turn the ADC on
+
+    while(!ADCCON2bits.BGVRRDY);                                                // Wait until the reference voltage is ready
+    while(ADCCON2bits.REFFLT);                                                  // Wait if there is a fault with the reference voltage
     
-    /* Enable clock to analog circuit */
-    ADCANCONbits.ANEN0 = 1; // Enable the clock to analog bias
-    ADCANCONbits.ANEN1 = 1; // Enable the clock to analog bias
-    ADCANCONbits.ANEN2 = 1; // Enable the clock to analog bias
-    ADCANCONbits.ANEN3 = 1; // Enable the clock to analog bias
-    ADCANCONbits.ANEN4 = 1; // Enable the clock to analog bias
+    ADCANCONbits.ANEN0 = 1;                                                     // Enable the clock to analog bias
+    ADCANCONbits.ANEN1 = 1;                                                     // Enable the clock to analog bias
+    ADCANCONbits.ANEN2 = 1;                                                     // Enable the clock to analog bias
+    ADCANCONbits.ANEN3 = 1;                                                     // Enable the clock to analog bias
+    ADCANCONbits.ANEN4 = 1;                                                     // Enable the clock to analog bias
     
-    /* Wait for ADC to be ready */
-    while(!ADCANCONbits.WKRDY0); // Wait until ADC0 is ready
-    while(!ADCANCONbits.WKRDY1); // Wait until ADC1 is ready
-    while(!ADCANCONbits.WKRDY2); // Wait until ADC2 is ready
-    while(!ADCANCONbits.WKRDY3); // Wait until ADC3 is ready
-    while(!ADCANCONbits.WKRDY4); // Wait until ADC4 is ready
+    while(!ADCANCONbits.WKRDY0);                                                // Wait until ADC0 is ready
+    while(!ADCANCONbits.WKRDY1);                                                // Wait until ADC1 is ready
+    while(!ADCANCONbits.WKRDY2);                                                // Wait until ADC2 is ready
+    while(!ADCANCONbits.WKRDY3);                                                // Wait until ADC3 is ready
+    while(!ADCANCONbits.WKRDY4);                                                // Wait until ADC4 is ready
     
-    /* Enable the ADC module */
-    ADCCON3bits.DIGEN0 = 1; // Enable ADC0
-    ADCCON3bits.DIGEN1 = 1; // Enable ADC1
-    ADCCON3bits.DIGEN2 = 1; // Enable ADC2
-    ADCCON3bits.DIGEN3 = 1; // Enable ADC3
-    ADCCON3bits.DIGEN4 = 1; // Enable ADC4
+    ADCCON3bits.DIGEN0 = 1;                                                     // Enable ADC0
+    ADCCON3bits.DIGEN1 = 1;                                                     // Enable ADC1
+    ADCCON3bits.DIGEN2 = 1;                                                     // Enable ADC2
+    ADCCON3bits.DIGEN3 = 1;                                                     // Enable ADC3
+    ADCCON3bits.DIGEN4 = 1;                                                     // Enable ADC4
     
     ADCDATA0 = 0;
     ADCDATA1 = 0;
@@ -417,43 +428,39 @@ void init_adc(void)
 
 void init_interrupt(void)
 {
-    // Configure RD0 as input for INT0
-    TRISDbits.TRISD0 = 1; // Set RD0 as input
+    TRISDbits.TRISD0 = 1;                                                       // Set RD0 as input
 
-    // Set initial edge detection based on the current state of the pin for INT0
-    if (PORTDbits.RD0 == 1) {
-        INTCONbits.INT0EP = 1; // Detect falling edge first if pin is initially high
-    } else {
-        INTCONbits.INT0EP = 0; // Detect rising edge first if pin is initially low
+    if (PORTDbits.RD0 == 1)                                                     // Set initial edge detection based on the current state of the pin for INT0
+    {
+        INTCONbits.INT0EP = 0;                                                  // Detect falling edge first if pin is initially high
+    } 
+    else 
+    {
+        INTCONbits.INT0EP = 1;                                                  // Detect rising edge first if pin is initially low
     }
 
-    // Set INT0 interrupt priority and subpriority
-    IPC0bits.INT0IP = 5;   // Set INT0 interrupt priority to 5
-    IPC0bits.INT0IS = 1;   // Set INT0 interrupt subpriority to 0
+    IPC0bits.INT0IP = 5;                                                        // Set INT0 interrupt priority to 5
+    IPC0bits.INT0IS = 1;                                                        // Set INT0 interrupt subpriority to 0
 
-    // Clear INT0 interrupt flag
-    IFS0bits.INT0IF = 0;   // Clear the INT0 interrupt flag
+    IFS0bits.INT0IF = 0;                                                        // Clear the INT0 interrupt flag
 
-    // Enable INT0 interrupt
-    IEC0bits.INT0IE = 1;   // Enable INT0 interrupt
+    IEC0bits.INT0IE = 1;                                                        // Enable INT0 interrupt
 
-    // Configure RD1 as input for INT1
-    TRISDbits.TRISD1 = 1; // Set RD1 as input
+    TRISDbits.TRISD1 = 1;                                                       // Set RD1 as input
 
-    // Set initial edge detection based on the current state of the pin for INT1
-    if (PORTDbits.RD1 == 1) {
-        INTCONbits.INT1EP = 1; // Detect falling edge first if pin is initially high
-    } else {
-        INTCONbits.INT1EP = 0; // Detect rising edge first if pin is initially low
+    if (PORTDbits.RD1 == 1)                                                     // Set initial edge detection based on the current state of the pin for INT1
+    {
+        INTCONbits.INT1EP = 0;                                                  // Detect falling edge first if pin is initially high
+    } 
+    else 
+    {
+        INTCONbits.INT1EP = 1;                                                  // Detect rising edge first if pin is initially low
     }
 
-    // Set INT1 interrupt priority and subpriority
-    IPC2bits.INT1IP = 5;   // Set INT1 interrupt priority to 5
-    IPC2bits.INT1IS = 0;   // Set INT1 interrupt subpriority to 0
+    IPC2bits.INT1IP = 5;                                                        // Set INT1 interrupt priority to 5
+    IPC2bits.INT1IS = 0;                                                        // Set INT1 interrupt subpriority to 0
 
-    // Clear INT1 interrupt flag
-    IFS0bits.INT1IF = 0;   // Clear the INT1 interrupt flag
+    IFS0bits.INT1IF = 0;                                                        // Clear the INT1 interrupt flag
 
-    // Enable INT1 interrupt
-    IEC0bits.INT1IE = 1;   // Enable INT1 interrupt
+    IEC0bits.INT1IE = 1;                                                        // Enable INT1 interrupt
 }
