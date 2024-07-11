@@ -71,7 +71,10 @@ int main(void)
     init_system();
     
     int i; 
-    for(i=0; i<20000000; i++){}
+    for(i=0; i<200000000; i++)                                                   // Delay loop
+    {
+        asm("nop");
+    } 
     
     LATBbits.LATB13 = 0;
     LATBbits.LATB14 = 0;
@@ -439,8 +442,8 @@ void init_interrupt(void)
         INTCONbits.INT0EP = 1;                                                  // Detect rising edge first if pin is initially low
     }
 
-    IPC0bits.INT0IP = 5;                                                        // Set INT0 interrupt priority to 5
-    IPC0bits.INT0IS = 1;                                                        // Set INT0 interrupt subpriority to 0
+    IPC0bits.INT0IP = 6;                                                        // Set INT0 interrupt priority to 5
+    IPC0bits.INT0IS = 0;                                                        // Set INT0 interrupt subpriority to 0
 
     IFS0bits.INT0IF = 0;                                                        // Clear the INT0 interrupt flag
 

@@ -13,6 +13,8 @@ bool bottomInsert = false;
 bool topInsert = false;
 char buf[50];
 int i;
+double checkVolt = 0;
+char checkVoltStr[20];
 
 void __ISR(_UART1_RX_VECTOR, IPL7SRS) UART_RX(void)
 {
@@ -108,15 +110,93 @@ void process_message(uint8_t* message, uint8_t length)
                 else 
                 {
                     powerVariable = 0;                                          // Set internal variable to 0
+                }
+            }
+            break;
+            
+        case 'S':                                                               // Voltage selection
+            if(message[2] == 'O') 
+            {
+                if(message[3] == '1') 
+                {
+                    LATBbits.LATB9 = 1;                                             // EN_SET1 to 1
+                    LATBbits.LATB10 = 1;                                            // EN_SET1 to 1
 
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                                  // Delay loop
+                    {
+                        asm("nop");
+                    }                                      
+
+                    LATBbits.LATB7 = 1;                                         // S0 to 1
+                    LATBbits.LATB8 = 0;                                         // S1 to 0
+
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                              // Delay loop
+                    {
+                        asm("nop");
+                    }
+                    
+                    LATBbits.LATB9 = 0;                                         // EN_SET1 to 0
+                    LATBbits.LATB10 = 0;                                        // EN_SET1 to 0
+                } 
+                else if(message[3] == '2') 
+                {
+                    LATBbits.LATB9 = 1;                                         // EN_SET1 to 1
+                    LATBbits.LATB10 = 1;                                        // EN_SET1 to 1
+
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                                  // Delay loop
+                    {
+                        asm("nop");
+                    }                                      
+
+                    LATBbits.LATB7 = 0;                                         // S0 to 0
+                    LATBbits.LATB8 = 1;                                         // S1 to 1
+
+                    for(i=0; i<200000; i++)                                     // Delay loop                                              // Delay loop
+                    {
+                        asm("nop");
+                    }                                    
+
+                    LATBbits.LATB9 = 0;                                         // EN_SET1 to 0
+                    LATBbits.LATB10 = 0;                                        // EN_SET1 to 0
+                } 
+                else if (message[3] == '3') 
+                {   
+                    
+                    LATBbits.LATB9 = 1;                                         // EN_SET1 to 1
+                    LATBbits.LATB10 = 1;                                        // EN_SET1 to 1
+
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                                  // Delay loop
+                    {
+                        asm("nop");
+                    }                                      
+
+                    LATBbits.LATB7 = 1;                                         // S0 to 1
+                    LATBbits.LATB8 = 1;                                         // S1 to 1
+
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                              // Delay loop
+                    {
+                        asm("nop");
+                    }                                    
+
+                    LATBbits.LATB9 = 0;                                         // EN_SET1 to 0
+                    LATBbits.LATB10 = 0;                                        // EN_SET1 to 0
+                } 
+                else 
+                {
                     LATBbits.LATB15 = 1;                                        // RESET_PWR to 1
 
-                    for(i=0; i<20000000; i++){}                                 // Delay loop
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                                  // Delay loop
+                    {
+                        asm("nop");
+                    }                                      
 
                     LATBbits.LATB7 = 0;                                         // S0 to 0
                     LATBbits.LATB8 = 0;                                         // S1 to 0
 
-                    for(i=0; i<20000000; i++){}                                 // Delay loop
+                    for(i=0; i<20000000; i++)                                   // Delay loop                                              // Delay loop
+                    {
+                        asm("nop");
+                    }                                    
 
                     LATBbits.LATB15 = 0;                                        // RESET_PWR to 0
                 }
@@ -166,27 +246,31 @@ void process_message(uint8_t* message, uint8_t length)
             
         case 'P':                                                               // Position selection
         {
-            int position[32][5] = 
+            if (message[2] >= '0' && message[2] <= '9' 
+                    && message[3] >= '0' && message[3] <= '9')
             {
-                {0,0,0,0,0},{0,0,0,0,1},{0,0,0,1,0},{0,0,0,1,1},{0,0,1,0,0},
-                {0,0,1,0,1},{0,0,1,1,0},{0,0,1,1,1},{0,1,0,0,0},{0,1,0,0,1},
-                {0,1,0,1,0},{0,1,0,1,1},{0,1,1,0,0},{0,1,1,0,1},{0,1,1,1,0},
-                {0,1,1,1,1},{1,0,0,0,0},{1,0,0,0,1},{1,0,0,1,0},{1,0,0,1,1},
-                {1,0,1,0,0},{1,0,1,0,1},{1,0,1,1,0},{1,0,1,1,1},{1,1,0,0,0},
-                {1,1,0,0,1},{1,1,0,1,0},{1,1,0,1,1},{1,1,1,0,0},{1,1,1,0,1},
-                {1,1,1,1,0},{1,1,1,1,1}
-            }; 
+                int position[32][5] = 
+                {
+                    {0,0,0,0,0},{0,0,0,0,1},{0,0,0,1,0},{0,0,0,1,1},{0,0,1,0,0},
+                    {0,0,1,0,1},{0,0,1,1,0},{0,0,1,1,1},{0,1,0,0,0},{0,1,0,0,1},
+                    {0,1,0,1,0},{0,1,0,1,1},{0,1,1,0,0},{0,1,1,0,1},{0,1,1,1,0},
+                    {0,1,1,1,1},{1,0,0,0,0},{1,0,0,0,1},{1,0,0,1,0},{1,0,0,1,1},
+                    {1,0,1,0,0},{1,0,1,0,1},{1,0,1,1,0},{1,0,1,1,1},{1,1,0,0,0},
+                    {1,1,0,0,1},{1,1,0,1,0},{1,1,0,1,1},{1,1,1,0,0},{1,1,1,0,1},
+                    {1,1,1,1,0},{1,1,1,1,1}
+                }; 
 
-            int num1 = message[2] - '0';
-            int num2 = message[3] - '1';
+                int num1 = message[2] - '0';
+                int num2 = message[3] - '1';
 
-            int num = num1 * 10 + num2;
+                int num = num1 * 10 + num2;
 
-            LATEbits.LATE0 = position[num][4];
-            LATEbits.LATE1 = position[num][3];
-            LATEbits.LATE2 = position[num][2];
-            LATEbits.LATE3 = position[num][1];
-            LATEbits.LATE4 = position[num][0];
+                LATEbits.LATE0 = position[num][4];
+                LATEbits.LATE1 = position[num][3];
+                LATEbits.LATE2 = position[num][2];
+                LATEbits.LATE3 = position[num][1];
+                LATEbits.LATE4 = position[num][0];
+            }
         }
         break;
         
@@ -227,7 +311,7 @@ void process_message(uint8_t* message, uint8_t length)
                 }
             }
             
-            if(message[2] == 'T')                                               // Enable Thermal addressing switch
+            if(message[2] == 'M')                                               // Enable Thermal addressing switch
             { 
                 if(message[3] == '1') 
                 {
@@ -237,6 +321,59 @@ void process_message(uint8_t* message, uint8_t length)
                 {
                     LATDbits.LATD3 = 0;
                 }
+            }
+            
+            if(message[2] == 'B')                                               // Enable OSC power
+            { 
+                LATBbits.LATB9 = 1;                                             // EN_SET1 to 1
+                LATBbits.LATB10 = 1;                                            // EN_SET2 to 1
+                
+                if (message[3] ==  '1')
+                {
+                    LATBbits.LATB11 = 1;                                        // EN_VOSC BR to 1
+                }
+                else
+                {
+                    LATBbits.LATB13 = 1;                                        // RESET_BR to 1
+                    LATBbits.LATB11 = 0;                                        // EN_VOSC BR to 0
+                }
+                
+                for(i=0; i<200000000; i++)                                      // Delay loop
+                {
+                    asm("nop");
+                }  
+                   
+                LATBbits.LATB13 = 0;                                            // RESET_BR to 0
+                
+                LATBbits.LATB9 = 0;                                             // EN_SET1 to 0
+                LATBbits.LATB10 = 0;                                            // EN_SET1 to 0
+                
+            }
+            
+            if(message[2] == 'T')   
+            {
+                LATBbits.LATB9 = 1;                                             // EN_SET1 to 1
+                LATBbits.LATB10 = 1;                                            // EN_SET2 to 1
+            
+                if (message[3] ==  '1')
+                {
+                    LATBbits.LATB12 = 1;                                         // EN_VOSC TR to 1
+                }
+                else
+                {
+                    LATBbits.LATB12 = 0;                                        // EN_VOSC TR to 0
+                    LATBbits.LATB14 = 1;                                        // RESET_TR to 1
+                }
+                
+                for(i=0; i<200000000; i++)                                      // Delay loop
+                {
+                    asm("nop");
+                }  
+                
+                LATBbits.LATB14 = 0;                                            // RESET_TR to 0
+
+                LATBbits.LATB9 = 0;                                             // EN_SET1 to 0
+                LATBbits.LATB10 = 0;                                            // EN_SET1 to 0       
             } 
             break;
             
@@ -310,38 +447,45 @@ void __ISR(_EXTERNAL_1_VECTOR, IPL5AUTO) rackInsertTop(void)
     
     if (topInsert)                                                              // If the interrupt is the rack being inserted 
     {                                                            
-        if(bottomInsert)                                                        // If the bottom rack is already in
+        if(!bottomInsert)                                                        // If the bottom rack is already in
         {
             LATBbits.LATB9 = 1;                                                 // EN_SET1 to 1
-            LATBbits.LATB10 = 1;                                                // EN_SET2 to 1
+            LATBbits.LATB10 = 1;                                                // EN_SET2 to 1  
             
-            double checkVolt = ADC_Read(4);
+            LATBbits.LATB14 = 1;                                                // RESET_TR to 1
+       
+            for(i=0; i<200000000; i++)                                          // Delay loop
+            {
+                asm("nop");
+            }  
             
-            if ((powerCheck - 0.1 <= checkVolt) &&
-                    (checkVolt <= powerCheck + 0.1))                            // Compare voltage measured to known value
-            {
-                LATBbits.LATB11 = 1;                                            // EN_VOSC_TR to 1
-            } 
-            else 
-            {
-                LATBbits.LATB11 = 0;                                            // EN_VOSC_TR to 0
-            }
+            LATBbits.LATB14 = 0;                                                // RESET_TR to 0
             
             LATBbits.LATB9 = 0;                                                 // EN_SET1 to 0
             LATBbits.LATB10 = 0;                                                // EN_SET2 to 0
-        } 
-        else 
-        {
-            LATBbits.LATB12 = 0;                                                // EN_VOSC_TR to 0
         }
     } 
     else 
     {
+        LATBbits.LATB9 = 1;                                                     // EN_SET1 to 1
+        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1    
+        
         LATBbits.LATB12 = 0;                                                    // EN_VOSC_TR to 0
-    }
+        LATBbits.LATB14 = 1;                                                    // RESET_TR to 1
+        
+        for(i=0; i<200000000; i++)                                              // Delay loop
+        {
+            asm("nop");
+        }  
+        
+        LATBbits.LATB14 = 0;                                                    // RESET_TR to 0
+        
+        LATBbits.LATB9 = 0;                                                     // EN_SET1 to 0
+        LATBbits.LATB10 = 0;                                                    // EN_SET2 to 0
+    }          
 }
 
-void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
+void __ISR(_EXTERNAL_0_VECTOR, IPL6AUTO) rackInsertBottom(void)
 {
     IFS0bits.INT0IF = 0;                                                        // Clear the interrupt flag
     
@@ -350,12 +494,10 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
     bottomInsert = !bottomInsert;                                               // Toggle the state of bottomInsert
     
     if (bottomInsert)                                                           // If the interrupt is the rack being inserted
-    {                                                         
+    {    
         LATBbits.LATB9 = 1;                                                     // EN_SET1 to 1
-        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1
+        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1 
         
-        for(i=0; i<2000000; i++){}                                              // Delay loop
-
         switch (powerVariable) 
         {
             case 0:                                                             // 0V Set
@@ -384,29 +526,37 @@ void __ISR(_EXTERNAL_0_VECTOR, IPL5AUTO) rackInsertBottom(void)
                 powerCheck = 0.0;                                               // Set known voltage comparison
                 break;
         }
-        for(i=0; i<2000000; i++){}                                              // Delay loop
         
-        double checkVolt = ((double)ADC_Read(4)/ 4095.0) * 3.3;                 // Calculate the measured voltage                       // Read board voltage
-        
-        for(i=0; i<2000000; i++){}                                              // Delay loop
-        
-        if ((powerCheck - 0.1 <= checkVolt) && (checkVolt <= powerCheck + 0.1)) // Compare voltage measured to known value 
+        for(i=0; i<200000000; i++)                                              // Delay loop
         {
-            LATCbits.LATC15 = 0;                                                // DISABLE to 0
-            LATBbits.LATB11 = 1;                                                // EN_VOSC BR to 1
-        } 
-        else 
-        {
-            LATBbits.LATB11 = 0;                                                // EN_VOSC_BR to 0
-        }
+            asm("nop");
+        }  
         
         LATBbits.LATB9 = 0;                                                     // EN_SET1 to 0
         LATBbits.LATB10 = 0;                                                    // EN_SET2 to 0
-    } 
+    }
     else 
     {
+        LATBbits.LATB9 = 1;                                                     // EN_SET1 to 1
+        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1
+        
+        LATBbits.LATB15 = 1;                                                    // RESET_PWR to 1
+        LATBbits.LATB13 = 1;                                                    // RESET_BR to 1                                
+
+        LATBbits.LATB7 = 0;                                                     // S0 to 0
+        LATBbits.LATB8 = 0;                                                     // S1 to 0
         LATBbits.LATB11 = 0;                                                    // EN_VOSC_BR to 0
-        LATCbits.LATC15 = 1;                                                    // DISABLE to 1
+
+        for(i=0; i<20000000; i++)                                               // Delay loop                                              // Delay loop
+        {
+            asm("nop");
+        }                                    
+
+        LATBbits.LATB13 = 0;                                                    // RESET_BR to 0
+        LATBbits.LATB15 = 0;                                                    // RESET_PWR to 0
+        
+        LATBbits.LATB9 = 0;                                                     // EN_SET1 to 0
+        LATBbits.LATB10 = 0;                                                    // EN_SET2 to 0
     }
 }
 

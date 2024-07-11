@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?> 
 <project>                                  
-  <executable name="dist/default/debug/Pic_Backboard.X.debug.elf">                 
+  <executable name="dist/default/production/Pic_Backboard.X.production.elf">                 
     <memory name="program">                 
       <units>bytes</units>                 
       <length>2098304</length>                 
-      <used>21044</used>                     
-      <free>2077260</free>                     
+      <used>21032</used>                     
+      <free>2077272</free>                     
     </memory>                              
     <memory name="data">              
       <units>bytes</units>                 
-      <length>525184</length>                 
-      <used>3764</used>                     
-      <free>521420</free>                     
+      <length>524288</length>                 
+      <used>180</used>                     
+      <free>524108</free>                     
     </memory>                              
   </executable>                            
 </project>                                 

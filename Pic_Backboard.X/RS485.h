@@ -6,7 +6,7 @@
 #define RX_ARRAY_SIZE 7
 #define MESSAGE_LENGTH 6
 #define CHECKSUM_INDEX 4 
-#define MY_ADDRESS 0x02
+#define MY_ADDRESS 0x09
 
 void UART_TX_Char(char c);
 void UART_TX_String(const char *str);
