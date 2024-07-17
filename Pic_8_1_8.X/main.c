@@ -68,16 +68,26 @@
 
 int main(void)
 {        
-    Sys_Init();                                                              // initialize Pic
+    init_system();                                                              // initialize Pic
    
     while(1){}
     return 0;
 }
 
-void Sys_Init(void)
+void init_system(void)
 {
     __builtin_disable_interrupts();
     
+    init_configuration();
+    
+    init_uart();                                                                // Function to initialize UART
+    
+    __builtin_enable_interrupts();                                              // Set the CP0 Status register IE bit high to globally enable interrupts
+
+}
+
+void init_configuration (void)
+{
     unsigned int i = 0;
     
     for(i = 0; i < 1000000; i++){} 
@@ -139,10 +149,6 @@ void Sys_Init(void)
     
     PRISS = 0x76543210;                                                         // Assign shadow set #7-#1 to priority level #7-#1 ISRs
     INTCONSET = _INTCON_MVEC_MASK;                                              // Configure Interrupt Controller for multi-vector mode
-    __builtin_enable_interrupts();                                              // Set the CP0 Status register IE bit high to globally enable interrupts
-
-    init_uart();                                                                // Function to initialize UART
-    
 }
 
 void init_uart(void)
