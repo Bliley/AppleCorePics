@@ -12,10 +12,10 @@
 /* DEVCFG2
 /* ************************************************************************** */
 #pragma config FPLLIDIV = DIV_2                                                 // System PLL Input Divider
-#pragma config FPLLRNG = RANGE_5_10_MHZ                                         // System PLL Input Range
+#pragma config FPLLRNG = RANGE_8_16_MHZ                                         // System PLL Input Range
 #pragma config FPLLICLK = PLL_POSC                                              // System PLL Input Clock Selection = Primary Oscillator
-#pragma config FPLLMULT = MUL_80                                                // System PLL Multiplier, 80 = 200MHz SYSCLK
-#pragma config FPLLODIV = DIV_2                                                 // System PLL Output Clock Divider
+#pragma config FPLLMULT = MUL_80                                                // System PLL Multiplier, x80 = 400MHz 
+#pragma config FPLLODIV = DIV_2                                                 // System PLL Output Clock Divider, /2 = 200MHz SYSCLK
 
 /* ************************************************************************** */
 /* DEVCFG1
@@ -58,7 +58,6 @@
 /* ************************************************************************** */
 #pragma config CP = OFF                                                         // Code Protect (Protection Disabled)
 
-
 #include <xc.h>
 #include <sys/attribs.h>
 #include <proc/p32mz2048efh064.h>
@@ -66,15 +65,15 @@
 #include "RS485.h"
 #include "main.h"
 
+bool topInsert = false;
+bool bottomInsert = false;
+
 int main(void)
 {        
     init_system();
     
     int i; 
-    for(i=0; i<200000000; i++)                                                   // Delay loop
-    {
-        asm("nop");
-    } 
+    for(i=0; i<200000000; i++) __asm volatile ("nop"); 
     
     LATBbits.LATB13 = 0;
     LATBbits.LATB14 = 0;
@@ -103,26 +102,30 @@ void init_system(void)
 
 void init_uart(void)
 {
-    U1BRG = 53;                                                                 // set for 57600
-    U1STA = 0;                                                                  // clear status control register for UART 1
-    U1MODE = 0x0000;                                                            // clear UART 1 mode register
- 
-    U1STAbits.UTXEN = 1;                                                        // transmit is enabled
+    U1MODEbits.ON = 0;                                                          // Disable UART before configuration
+
+    U1BRG = 26;                                                                 // Set the baud rate (115200)
+    U1STA = 0;                                                                  // Clear UART status and mode registers
+    U1MODE = 0;                                                                 // Clear UART status and mode registers
     
-    U1STAbits.URXEN = 1;                                                        // receive is enabled                    
-    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // set interrupt priority
-    IEC3bits.U1RXIE = 1;                                                        // enable RX interrupt
-    IFS3bits.U1RXIF = 0; 
-    
-    while (U1STAbits.URXDA) 
+    while (U1STAbits.URXDA)                                                     // Clear any existing data in the receive buffer
     {
-        volatile char dummy = U1RXREG; 
+        volatile char dummy = U1RXREG;                                          // Clear the receive buffer
     }
     
-    while (!U1STAbits.TRMT);
+    while (!U1STAbits.TRMT);                                                    // Wait until the transmit buffer is empty
     
-    U1MODEbits.ON = 1;                                                          // turn on UART1
-}
+    U1STAbits.UTXEN = 1;                                                        // Enable Transmit
+    U1STAbits.URXEN = 1;                                                        // Enable Receive
+   
+    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // Set UART RX interrupt priority
+    
+    IEC3bits.U1RXIE = 1;                                                        // Enable UART RX interrupt
+   
+    IFS3bits.U1RXIF = 0;                                                        // Clear UART RX interrupt flag
+    
+    U1MODEbits.ON = 1;                                                          // Enable UART module
+}   
 
 void init_configuration(void)
 {
@@ -170,10 +173,10 @@ void init_configuration(void)
     TRISFbits.TRISF0 = 0; 
     
     TRISG = 0xFF;                                                               // Port G default to all Inputs
-    TRISGbits.TRISG6 = 1;                                                       // Output for delayed PPS out
-    TRISGbits.TRISG7 = 0;                                                       // UART1 TX output
-    TRISGbits.TRISG8 = 1;                                                       // UART1 RX input
-    TRISGbits.TRISG9 = 0;     
+    TRISGbits.TRISG6 = 0;                                                       // Disable TX as output
+    TRISGbits.TRISG7 = 0;                                                       // UART1 TX as output
+    TRISGbits.TRISG8 = 1;                                                       // UART1 RX as input
+    TRISGbits.TRISG9 = 0;                                                       // Disable RX as output
     
     /* ********************************************************************** */
     /* Analog settings
@@ -207,8 +210,8 @@ void init_configuration(void)
     RPG7Rbits.RPG7R = 0b0001;                                                   // set UART1 TX to function 1, RPG7
     CFGCONbits.IOLOCK = 1;
     
-    unsigned int i = 0;
-    for(i = 0; i < 1000000; i++){}                                              // pause on boot to allow UART to stabilize  
+    int i;
+    for(i=0; i<200000000; i++) __asm volatile ("nop");   
 
     SYSKEY = 0xAA996655;                                                        // first unlock key
     SYSKEY = 0x556699AA;                                                        // second unlock key
@@ -256,6 +259,10 @@ void init_configuration(void)
     LATFbits.LATF3 = 0;
     LATFbits.LATF4 = 0;
     LATFbits.LATF5 = 0;
+    
+    LATG = 0x00; 
+    LATGbits.LATG6 = 1;
+    LATGbits.LATG9 = 0;
 }
 
 void init_adc(void)
@@ -436,6 +443,7 @@ void init_interrupt(void)
     if (PORTDbits.RD0 == 1)                                                     // Set initial edge detection based on the current state of the pin for INT0
     {
         INTCONbits.INT0EP = 0;                                                  // Detect falling edge first if pin is initially high
+        bottomInsert = true;
     } 
     else 
     {
@@ -454,6 +462,7 @@ void init_interrupt(void)
     if (PORTDbits.RD1 == 1)                                                     // Set initial edge detection based on the current state of the pin for INT1
     {
         INTCONbits.INT1EP = 0;                                                  // Detect falling edge first if pin is initially high
+        topInsert = true;
     } 
     else 
     {
