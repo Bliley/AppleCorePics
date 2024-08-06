@@ -70,7 +70,14 @@ int main(void)
 {        
     init_system();
    
-    while(1){}
+    while(1)
+    {
+         if (messageAvailable)
+        {   
+            process_message(messageBuf, MESSAGE_LENGTH);                        // Process message in the main loop
+            messageAvailable = false;
+        }
+    }
     return 0;
 }
 
@@ -148,7 +155,7 @@ void init_configuration(void)
     INTCONSET = _INTCON_MVEC_MASK;                                              // Configure Interrupt Controller for multi-vector mode
     
     LATG = 0x00; 
-    LATGbits.LATG6 = 1;
+    LATGbits.LATG6 = 0;
     LATGbits.LATG9 = 0;
 }
 

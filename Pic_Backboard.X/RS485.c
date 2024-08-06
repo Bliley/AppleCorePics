@@ -3,6 +3,7 @@
 #include <proc/p32mz2048efh064.h>
 #include <cp0defs.h>
 #include <stdio.h>
+#include "main.h"
 #include "RS485.h"
 
 int powerVariable = 0;
@@ -12,66 +13,86 @@ char adcStr[20];
 int i;
 double checkVolt = 0;
 char checkVoltStr[20];
+bool messageAvailable = false;
+uint8_t messageBuf[MESSAGE_LENGTH];
 
 void __ISR(_UART1_RX_VECTOR, IPL1SRS) UART_RX(void)
 {
     static uint8_t rx_array[RX_ARRAY_SIZE];                                     // Array to hold received data
     static uint8_t rx_array_ptr = 0;                                            // Pointer to current position in array
     
-    while(U1STAbits.URXDA) 
+    while (U1STAbits.URXDA)
     {
-        rx_array[rx_array_ptr++] = U1RXREG;                                     // Read byte
-    }
-    
-    if (rx_array[0] != MY_ADDRESS)
-    {
-
-        if (U1STAbits.OERR == 1)                                                // Check for overrun error
-        { 
-            U1STAbits.OERR = 0;                                                 // Clear error flag
-        } 
-        else if(rx_array_ptr >= RX_ARRAY_SIZE)                                  // Check if array is full
+        if (rx_array_ptr < RX_ARRAY_SIZE)
         {
-            rx_array_ptr = 0;                                                   // Reset array pointer
-            for(i=0; i<RX_ARRAY_SIZE; i++) 
+            rx_array[rx_array_ptr++] = U1RXREG;                                 // Read byte
+        }
+        else
+        {
+            rx_array_ptr = 0;
+            for (i = 0; i < RX_ARRAY_SIZE; i++)
             {
                 rx_array[i] = 0;                                                // Clear array
             }
-        } 
-        else if (rx_array[rx_array_ptr-1] == '\n')                              // Check for end of message
+            break;
+        }
+    }
+
+    if (rx_array[0] == MY_ADDRESS)
+    {
+        if (U1STAbits.OERR == 1)                                                // Check for overrun error
+        { 
+            U1STAbits.OERR = 0;                                                 // Clear error flag
+        }
+        else if (rx_array_ptr > 0 && rx_array[rx_array_ptr - 1] == '\n')        // Check for end of message
         { 
             IFS3bits.U1RXIF = 0;                                                // Clear RX interrupt flag
 
-            rx_array[rx_array_ptr++] = U1RXREG;                                 // Read received data into array
-
-            if (rx_array_ptr == MESSAGE_LENGTH+1)                               // Check if message is complete
-            {     
+            if (rx_array_ptr == MESSAGE_LENGTH)                                 // Check if message is complete
+            {
                 uint8_t address = rx_array[0];                                  // Get address from message
                 uint8_t checksum = rx_array[CHECKSUM_INDEX];                    // Get checksum from message
 
                 uint8_t calculated_checksum = 0;                                // Variable for calculated checksum
-                for (uint8_t i = 0; i < CHECKSUM_INDEX; i++) 
+                for (i = 0; i < CHECKSUM_INDEX; i++)
                 {
                     calculated_checksum ^= rx_array[i];                         // XOR each byte
                 }
 
                 if (calculated_checksum == checksum)                            // Check if checksum is correct
-                { 
-                    if (address == MY_ADDRESS)                                  // Check if address matches
-                    { 
-                        process_message(rx_array, MESSAGE_LENGTH);              // Process message
+                {
+                    for (i = 0; i < MESSAGE_LENGTH; i++)
+                    {
+                        messageBuf[i] = rx_array[i];                            // Copy message to buffer
                     }
-                } 
-                else 
+                    messageAvailable = true;                                    // Set the flag indicating a message is ready
+                }
+                else
                 {
                     handle_checksum_error();                                    // Handle checksum error
-                    rx_array_ptr = 0;                                           // Reset array pointer
-                    return;
                 }
-                rx_array_ptr = 0;                                               // Reset array pointer
+
+                rx_array_ptr = 0;
+                for (i = 0; i < RX_ARRAY_SIZE; i++)
+                {
+                    rx_array[i] = 0;                                            // Clear array
+                }
+
+                return;                                                         // Exit the ISR
             }
         }
     }
+
+    if (rx_array_ptr >= RX_ARRAY_SIZE || rx_array[0] != MY_ADDRESS || U1STAbits.OERR == 1)
+    {
+        rx_array_ptr = 0;
+        for (i = 0; i < RX_ARRAY_SIZE; i++)
+        {
+            rx_array[i] = 0;                                                    // Clear array
+        }
+    }
+
+    IFS3bits.U1RXIF = 0;                                                        // Clear RX interrupt flag
 }
 
 void UART_TX_Char(char c) 
@@ -95,34 +116,66 @@ void process_message(uint8_t* message, uint8_t length)
     {
         case 'V':                                                               // Voltage selection
                 voltage_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;
         case 'S':                                                               // Voltage selection
-                shelf_call(message);
+                power_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;
         case 'R':                                                               // Rack selection     
                 reset_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;   
         case 'I':                                                               // Rack selection
                 bottomTop_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;   
         case 'P':                                                               // Position selection
                 position_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;  
         case 'E':                                                               // Enable features on backboard         
                 enable_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;      
         case 'A':                                                               // ADC readings
-                adc_call(message);
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}
+                adc_call(message);                                    
                 UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;
         default:
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('F');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
             break;
     }
 }
@@ -344,7 +397,7 @@ void voltage_call(uint8_t* message)
     }
 }
 
-void shelf_call(uint8_t* message) 
+void power_call(uint8_t* message) 
 {
     if(message[2] == 'O') 
     {

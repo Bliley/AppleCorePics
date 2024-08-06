@@ -79,8 +79,14 @@ int main(void)
     LATBbits.LATB14 = 0;
     LATBbits.LATB15 = 0;
     
-    while(1){}
-    
+    while(1)
+    {
+         if (messageAvailable)
+        {   
+            process_message(messageBuf, MESSAGE_LENGTH);                        // Process message in the main loop
+            messageAvailable = false;
+        }
+    }
     return 0;
 }
 
@@ -261,7 +267,7 @@ void init_configuration(void)
     LATFbits.LATF5 = 0;
     
     LATG = 0x00; 
-    LATGbits.LATG6 = 1;
+    LATGbits.LATG6 = 0;
     LATGbits.LATG9 = 0;
 }
 

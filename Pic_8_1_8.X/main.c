@@ -70,7 +70,14 @@ int main(void)
 {        
     init_system();                                                              // initialize Pic
    
-    while(1){}
+    while(1)
+    {
+         if (messageAvailable)
+        {   
+            process_message(messageBuf, MESSAGE_LENGTH);                        // Process message in the main loop
+            messageAvailable = false;
+        }
+    }
     return 0;
 }
 
