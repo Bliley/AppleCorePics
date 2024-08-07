@@ -12,10 +12,10 @@
 /* DEVCFG2
 /* ************************************************************************** */
 #pragma config FPLLIDIV = DIV_2                                                 // System PLL Input Divider
-#pragma config FPLLRNG = RANGE_5_10_MHZ                                         // System PLL Input Range
+#pragma config FPLLRNG = RANGE_8_16_MHZ                                         // System PLL Input Range
 #pragma config FPLLICLK = PLL_POSC                                              // System PLL Input Clock Selection = Primary Oscillator
-#pragma config FPLLMULT = MUL_80                                                // System PLL Multiplier, 80 = 200MHz SYSCLK
-#pragma config FPLLODIV = DIV_2                                                 // System PLL Output Clock Divider
+#pragma config FPLLMULT = MUL_80                                                // System PLL Multiplier, x80 = 400MHz 
+#pragma config FPLLODIV = DIV_2                                                 // System PLL Output Clock Divider, /2 = 200MHz SYSCLK
 
 /* ************************************************************************** */
 /* DEVCFG1
@@ -68,7 +68,7 @@
 
 int main(void)
 {        
-    init_system();                                                              // initialize Pic
+    init_system();
    
     while(1)
     {
@@ -90,10 +90,10 @@ void init_system(void)
     init_uart();                                                                // Function to initialize UART
     
     __builtin_enable_interrupts();                                              // Set the CP0 Status register IE bit high to globally enable interrupts
-
+    
 }
 
-void init_configuration (void)
+void init_configuration(void)
 {
     unsigned int i = 0;
     
@@ -111,9 +111,9 @@ void init_configuration (void)
     TRISDbits.TRISD11 = 0;                                                      // Addressing Bit B2 set to output
     TRISDbits.TRISD10 = 0;                                                      // Addressing Bit B1 set to output
     TRISDbits.TRISD9 = 0;                                                       // Addressing Bit B0 set to output
-    TRISDbits.TRISD4 = 0;                                                       // Addressing Bit T2 set to output
-    TRISDbits.TRISD3 = 0;                                                       // Addressing Bit T1 set to output
-    TRISDbits.TRISD2 = 0;                                                       // Addressing Bit T0 set to output
+    TRISDbits.TRISD4 = 0;                                                       // Addressing Bit B2 set to output
+    TRISDbits.TRISD3 = 0;                                                       // Addressing Bit B1 set to output
+    TRISDbits.TRISD2 = 0;                                                       // Addressing Bit B0 set to output
     TRISDbits.TRISD1 = 0;                                                       // Waveform termination bit set to output
     
     TRISE = 0xFF;                                                               // Port E default to all Inputs  
@@ -121,7 +121,7 @@ void init_configuration (void)
     TRISF = 0xFF;                                                               // Port F default to all Inputs
    
     TRISG = 0xFF;                                                               // Port G default to all Inputs
-    TRISGbits.TRISG6 = 1;                                                       // Enable/Disable TX
+    TRISGbits.TRISG6 = 0;                                                       // Enable/Disable TX
     TRISGbits.TRISG7 = 0;                                                       // UART1 TX output
     TRISGbits.TRISG8 = 1;                                                       // UART1 RX input
     TRISGbits.TRISG9 = 0;                                                       // Enable/Disable RX
@@ -156,27 +156,35 @@ void init_configuration (void)
     
     PRISS = 0x76543210;                                                         // Assign shadow set #7-#1 to priority level #7-#1 ISRs
     INTCONSET = _INTCON_MVEC_MASK;                                              // Configure Interrupt Controller for multi-vector mode
+    
+    LATG = 0x00; 
+    LATGbits.LATG6 = 0;
+    LATGbits.LATG9 = 0;
 }
 
 void init_uart(void)
 {
-    U1BRG = 53;                                                                 // Set for 57600
-    U1STA = 0;                                                                  // Clear status control register for UART 1
-    U1MODE = 0x0000;                                                            // Clear UART 1 mode register
- 
-    U1STAbits.UTXEN = 1;                                                        // Transmit is enabled
-    U1STAbits.URXEN = 1;                                                        // Receive is enabled                    
+    U1MODEbits.ON = 0;                                                          // Disable UART before configuration
+
+    U1BRG = 26;                                                                 // Set the baud rate (115200)
+    U1STA = 0;                                                                  // Clear UART status and mode registers
+    U1MODE = 0;                                                                 // Clear UART status and mode registers
     
-    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // Set interrupt priority
-    IEC3bits.U1RXIE = 1;                                                        // Enable RX interrupt
-    IFS3bits.U1RXIF = 0;                                                        // Interrupt flag is cleared
-    
-    while (U1STAbits.URXDA) 
+    while (U1STAbits.URXDA)                                                     // Clear any existing data in the receive buffer
     {
         volatile char dummy = U1RXREG;                                          // Clear the receive buffer
     }
     
-    while (!U1STAbits.TRMT);                                                    // Clear the transmit buffer
+    while (!U1STAbits.TRMT);                                                    // Wait until the transmit buffer is empty
     
-    U1MODEbits.ON = 1;                                                          // Turn on UART1
-}
+    U1STAbits.UTXEN = 1;                                                        // Enable Transmit
+    U1STAbits.URXEN = 1;                                                        // Enable Receive
+   
+    IPC28bits.U1RXIP = UART_RX_INT_PRIORITY;                                    // Set UART RX interrupt priority
+    
+    IEC3bits.U1RXIE = 1;                                                        // Enable UART RX interrupt
+   
+    IFS3bits.U1RXIF = 0;                                                        // Clear UART RX interrupt flag
+    
+    U1MODEbits.ON = 1;                                                          // Enable UART module
+}   

@@ -6,9 +6,10 @@
 #define CHECKSUM_INDEX 3 
 #define MY_ADDRESS 0x01
 
+#include <stdint.h>
 #include <stdbool.h>
 
-extern bool messageAvailable;
+extern volatile bool messageAvailable;
 extern uint8_t messageBuf[MESSAGE_LENGTH];
 
 void UART_TX_Char(char c);
