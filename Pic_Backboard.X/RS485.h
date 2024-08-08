@@ -7,7 +7,7 @@
 #define RX_ARRAY_SIZE 7
 #define MESSAGE_LENGTH 6
 #define CHECKSUM_INDEX 4 
-#define MY_ADDRESS 0x09
+#define MY_ADDRESS 0x04
 
 extern bool messageAvailable;
 extern uint8_t messageBuf[MESSAGE_LENGTH];
