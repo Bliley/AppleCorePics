@@ -163,9 +163,17 @@ void process_message(uint8_t* message, uint8_t length)
                 LATGbits.LATG6 = 0;
             break;      
         case 'A':                                                               // ADC readings
+                adc_call(message);    
                 LATGbits.LATG6 = 1;
-                for(i = 0; i < 1000000; i++){}
-                adc_call(message);                                    
+                for(i = 0; i < 1000000; i++){}                                    
+                UART_TX_Char('P');
+                for(i = 0; i < 1000000; i++){}                                    
+                LATGbits.LATG6 = 0;
+            break;
+        case 'O':                                                               // ADC readings
+                osc_call(message);    
+                LATGbits.LATG6 = 1;
+                for(i = 0; i < 1000000; i++){}                                    
                 UART_TX_Char('P');
                 for(i = 0; i < 1000000; i++){}                                    
                 LATGbits.LATG6 = 0;
@@ -594,37 +602,30 @@ void enable_call(uint8_t* message)
             LATDbits.LATD3 = 0;
         }
     }
+}
+
+void osc_call(uint8_t* message)
+{
+    LATBbits.LATB9 = 1;                                                         // EN_SET1 to 1
+    LATBbits.LATB10 = 1;                                                        // EN_SET2 to 1
 
     if(message[2] == 'B')                                                       // Enable OSC power
     { 
-        LATBbits.LATB9 = 1;                                                     // EN_SET1 to 1
-        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1
-
-        if (message[3] ==  '1')
+        if (message[3] == '1')
         {
             LATBbits.LATB11 = 1;                                                // EN_VOSC BR to 1
         }
         else
         {
-            LATBbits.LATB13 = 1;                                                // RESET_BR to 1
             LATBbits.LATB11 = 0;                                                // EN_VOSC BR to 0
+            LATBbits.LATB13 = 1;                                                // RESET_BR to 1
         }
 
-        for(i=0; i<200000000; i++) __asm volatile ("nop"); 
-
         LATBbits.LATB13 = 0;                                                    // RESET_BR to 0
-
-        LATBbits.LATB9 = 0;                                                     // EN_SET1 to 0
-        LATBbits.LATB10 = 0;                                                    // EN_SET1 to 0
-
     }
-
-    if(message[2] == 'T')   
+    else
     {
-        LATBbits.LATB9 = 1;                                                     // EN_SET1 to 1
-        LATBbits.LATB10 = 1;                                                    // EN_SET2 to 1
-
-        if (message[3] ==  '1')
+        if (message[3] == '1')
         {
             LATBbits.LATB12 = 1;                                                // EN_VOSC TR to 1
         }
@@ -634,11 +635,9 @@ void enable_call(uint8_t* message)
             LATBbits.LATB14 = 1;                                                // RESET_TR to 1
         }
 
-        for(i=0; i<200000000; i++) __asm volatile ("nop"); 
-
         LATBbits.LATB14 = 0;                                                    // RESET_TR to 0
+    }   
 
-        LATBbits.LATB9 = 0;                                                     // EN_SET1 to 0
-        LATBbits.LATB10 = 0;                                                    // EN_SET1 to 0       
-    } 
+    LATBbits.LATB9 = 0;                                                         // EN_SET1 to 0
+    LATBbits.LATB10 = 0;                                                        // EN_SET2 to 0
 }

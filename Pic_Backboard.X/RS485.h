@@ -7,7 +7,7 @@
 #define RX_ARRAY_SIZE 7
 #define MESSAGE_LENGTH 6
 #define CHECKSUM_INDEX 4 
-#define MY_ADDRESS 0x04
+#define MY_ADDRESS 0x02
 
 extern bool messageAvailable;
 extern uint8_t messageBuf[MESSAGE_LENGTH];
@@ -23,6 +23,7 @@ void reset_call(uint8_t* message);
 void bottomTop_call(uint8_t* message);
 void position_call(uint8_t* message);
 void enable_call(uint8_t* message);
+void osc_call(uint8_t* message);
 void adc_call(uint8_t* message);
                 
 #endif
